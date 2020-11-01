@@ -2,9 +2,9 @@ import * as dotenv from 'dotenv';
 import needle from 'needle';
 
 dotenv.config(); 
-const queueAsk = [];
-const queueSummary = [];
-const queueReport = [];
+const queueQuestion: any = [];
+const queueSummary: any = [];
+const queueReport: any = [];
 
 // The code below sets the bearer token from your environment variables
 // To set environment variables on Mac OS X, run the export command below from the terminal: 
@@ -16,7 +16,7 @@ const streamURL = 'https://api.twitter.com/2/tweets/search/stream';
 
 // Edit rules as desired here below
 const rules = [
-    { 'value': '@ineedsaucepls', 'tag': 'mention' }, 
+    { 'value': `${process.env.TWITTER_ACCOUNT_TO_LISTEN}`, 'tag': 'mention' }, 
   ];
 
 async function getAllRules() {
@@ -96,7 +96,7 @@ function streamConnect(token: any) {
     stream.on('data', (data: any) => {
     try {
         const json = JSON.parse(data);
-        console.log(json);
+        queueQuestion.push(json)
     } catch (e) {
         // Keep alive signal received. Do nothing.
     }
@@ -110,8 +110,7 @@ function streamConnect(token: any) {
     
 }
 
-
-(async () => {
+async function retrieveQuestion() {
     let currentRules;
   
     try {
@@ -145,5 +144,28 @@ function streamConnect(token: any) {
       }, 2 ** timeout);
       streamConnect(token);
     })
+}
+
+async function generateSummary() {
+    const question = queueQuestion.shift()
+    if (question) console.log(question)
+}
+
+async function sendAnswer() {
+    return; 
+}
+
+
+(async () => {
+    
+    retrieveQuestion(); 
+
+    setInterval(() => {
+        generateSummary(); 
+    }, 1000)
+
+    setInterval(() => {
+        sendAnswer(); 
+    }, 1000)
 
   })();
