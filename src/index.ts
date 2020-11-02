@@ -12,11 +12,12 @@ const queueReport: any = [];
 const token = process.env.TWITTER_BEARER_TOKEN;  
 
 const rulesURL = 'https://api.twitter.com/2/tweets/search/stream/rules'
-const streamURL = 'https://api.twitter.com/2/tweets/search/stream';
+const streamURL = 'https://api.twitter.com/2/tweets/search/stream?expansions=attachments.poll_ids,attachments.media_keys,author_id,entities.mentions.username,geo.place_id,in_reply_to_user_id,referenced_tweets.id,referenced_tweets.id.author_id';
+const recentSearchURL = 'https://api.twitter.com/2/tweets/search/recent'; 
 
 // Edit rules as desired here below
 const rules = [
-    { 'value': `${process.env.TWITTER_ACCOUNT_TO_LISTEN}`, 'tag': 'mention' }, 
+    { 'value': `${process.env.TWITTER_ACCOUNT_TO_LISTEN}`, 'tag': 'monitor-mention' }, 
   ];
 
 async function getAllRules() {
@@ -91,8 +92,8 @@ function streamConnect(token: any) {
         headers: { 
             Authorization: `Bearer ${token}`
         }
-    }, options);
-
+    }, options)
+    
     stream.on('data', (data: any) => {
     try {
         const json = JSON.parse(data);
@@ -100,14 +101,34 @@ function streamConnect(token: any) {
     } catch (e) {
         // Keep alive signal received. Do nothing.
     }
-    }).on('error', (error: any) => {
-        if (error.code === 'ETIMEDOUT') {
-            stream.emit('timeout');
-        }
-    });
+    }).on('err', (err: any) => {
+        // if (err.code === 'ETIMEDOUT') {
+        //     stream.emit('timeout');
+        // }
+        console.log(err)
+    }); 
 
     return stream;
     
+}
+
+async function recentSearch(username: string) {
+
+    // Edit query parameters below
+    const params = {
+        'query': `from:${username}`, 
+        'tweet.fields': 'author_id' 
+    } 
+
+    const res = await needle('get', recentSearchURL, params, { headers: {
+        "authorization": `Bearer ${token}`
+    }})
+
+    if(res.body) {
+        return res.body;
+    } else {
+        throw new Error ('Unsuccessful request')
+    }
 }
 
 async function retrieveQuestion() {
@@ -146,26 +167,41 @@ async function retrieveQuestion() {
     })
 }
 
-async function generateSummary() {
-    const question = queueQuestion.shift()
-    if (question) console.log(question)
+async function generateSummary(question: any) {
+    if (question.data.in_reply_to_user_id) {
+        return recentSearch(question.data.in_reply_to_user_id); 
+    } else return null; 
 }
 
 async function sendAnswer() {
     return; 
 }
 
+async function app() {
+    try {
+        retrieveQuestion(); 
 
-(async () => {
-    
-    retrieveQuestion(); 
-
-    setInterval(() => {
-        generateSummary(); 
+    setInterval(async () => {
+        const question = await queueQuestion.shift()
+        if (question) {
+            console.log(JSON.stringify(question)); 
+            const summary = await generateSummary(question); 
+            console.log(JSON.stringify(summary)); 
+            if (summary) queueSummary.push(summary); 
+        }
     }, 1000)
 
-    setInterval(() => {
+    setInterval( async() => {
         sendAnswer(); 
     }, 1000)
 
+    console.log('Service has been started!')
+    } catch (e) {
+        console.log(JSON.stringify(e)); 
+        setTimeout(app, 3000)
+    }
+}
+
+(async () => {
+    app(); 
   })();
