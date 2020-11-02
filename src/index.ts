@@ -116,8 +116,9 @@ async function recentSearch(username: string) {
 
     // Edit query parameters below
     const params = {
-        'query': `from:${username}`, 
-        'tweet.fields': 'author_id' 
+        'query': `from:${username} -is:retweet`, 
+        'tweet.fields': 'author_id',
+        'max_results': '100'
     } 
 
     const res = await needle('get', recentSearchURL, params, { headers: {
