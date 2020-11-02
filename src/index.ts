@@ -1,5 +1,6 @@
 import * as dotenv from 'dotenv'; 
 import needle from 'needle';
+import TextCleaner from 'text-cleaner';
 
 dotenv.config(); 
 const queueQuestion: any = [];
@@ -174,10 +175,10 @@ async function generateSummary(question: any) {
         let concatenated_recent_tweets = ''; 
         if (recent_tweets.data) {
             recent_tweets.data.forEach((element: any) => {
-                if (element.text) concatenated_recent_tweets = concatenated_recent_tweets + element.text
+                if (element.text) concatenated_recent_tweets = concatenated_recent_tweets + ' ' + element.text
             });
         }
-        return concatenated_recent_tweets; 
+        return TextCleaner(concatenated_recent_tweets).stripHtml().removeChars().condense().toLowerCase().valueOf();
     }
     catch(e) {
         console.log(e)
@@ -197,7 +198,9 @@ async function app() {
     setInterval(async () => {
         const question = await queueQuestion.shift()
         if (question) {
+            console.log({question})
             const summary = await generateSummary(question); 
+            console.log({summary})
             if (summary) queueSummary.push(summary); 
         }
     }, 1000)
