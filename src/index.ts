@@ -128,7 +128,7 @@ async function recentSearch(username: string) {
     if(res.body) {
         return res.body;
     } else {
-        throw new Error ('Unsuccessful request')
+        return null; 
     }
 }
 
@@ -169,9 +169,21 @@ async function retrieveQuestion() {
 }
 
 async function generateSummary(question: any) {
-    if (question.data.in_reply_to_user_id) {
-        return recentSearch(question.data.in_reply_to_user_id); 
-    } else return null; 
+    try {
+        const recent_tweets = await recentSearch(question.data.in_reply_to_user_id); 
+        let concatenated_recent_tweets = ''; 
+        if (recent_tweets.data) {
+            recent_tweets.data.forEach((element: any) => {
+                if (element.text) concatenated_recent_tweets = concatenated_recent_tweets + element.text
+            });
+        }
+        return concatenated_recent_tweets; 
+    }
+    catch(e) {
+        console.log(e)
+        return null; 
+    }
+    
 }
 
 async function sendAnswer() {
@@ -185,9 +197,7 @@ async function app() {
     setInterval(async () => {
         const question = await queueQuestion.shift()
         if (question) {
-            console.log(JSON.stringify(question)); 
             const summary = await generateSummary(question); 
-            console.log(JSON.stringify(summary)); 
             if (summary) queueSummary.push(summary); 
         }
     }, 1000)
