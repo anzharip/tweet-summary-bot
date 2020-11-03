@@ -3,9 +3,9 @@ import needle from 'needle';
 import TextCleaner from 'text-cleaner';
 
 dotenv.config(); 
-const queueQuestion: any = [];
-const queueSummary: any = [];
-const queueReport: any = [];
+const queueQuestion: any[] = [];
+const queueSummary: any[] = [];
+const queueReport: any[] = [];
 
 // The code below sets the bearer token from your environment variables
 // To set environment variables on Mac OS X, run the export command below from the terminal: 
