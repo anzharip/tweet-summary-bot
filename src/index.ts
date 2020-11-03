@@ -86,14 +86,13 @@ async function setRules() {
 function streamConnect(token: any) {
     //Listen to the stream
     const options = {
-        timeout: 20000
-      }
-    
-    const stream = needle.get(streamURL, {
+        timeout: 20000,
         headers: { 
             Authorization: `Bearer ${token}`
         }
-    }, options)
+      }
+    
+    const stream = needle.get(streamURL, options)
     
     stream.on('data', (data: any) => {
     try {
@@ -131,6 +130,39 @@ async function recentSearch(username: string) {
     } else {
         return null; 
     }
+}
+
+async function generateWordFrequency(words: string[]) {
+    if (words.length === 0) {
+        return; 
+    }
+    interface WordFrequency {
+        [key: string]: number;
+    }
+    const wordFrequency: WordFrequency = {}
+    words.forEach((element: string) => {
+        if (Object.prototype.hasOwnProperty.call(wordFrequency, element)) {
+            wordFrequency[element] += 1; 
+        } else {
+            wordFrequency[element] = 1; 
+        }
+    });
+    return wordFrequency; 
+}
+
+async function generateWordsArray(tweets: any) {
+    if (tweets.length === 0) {
+        return; 
+    }
+    let recentTweetsConcat = ''; 
+        if (tweets['data']) {
+            tweets['data'].forEach((element: any) => {
+                if (element.text) recentTweetsConcat = recentTweetsConcat + ' ' + element.text
+            });
+        }
+        const recentTweetsConcatClean = TextCleaner(recentTweetsConcat).stripHtml().removeChars().condense().toLowerCase().valueOf();
+        const recentTweetsConcatCleanArray = recentTweetsConcatClean.split(' ');
+    return recentTweetsConcatCleanArray; 
 }
 
 async function retrieveQuestion() {
@@ -171,14 +203,9 @@ async function retrieveQuestion() {
 
 async function generateSummary(question: any) {
     try {
-        const recent_tweets = await recentSearch(question.data.in_reply_to_user_id); 
-        let concatenated_recent_tweets = ''; 
-        if (recent_tweets.data) {
-            recent_tweets.data.forEach((element: any) => {
-                if (element.text) concatenated_recent_tweets = concatenated_recent_tweets + ' ' + element.text
-            });
-        }
-        return TextCleaner(concatenated_recent_tweets).stripHtml().removeChars().condense().toLowerCase().valueOf();
+        const recentTweets = await recentSearch(question.data.in_reply_to_user_id); 
+        const wordsArray = await generateWordsArray(recentTweets); 
+        return generateWordFrequency(wordsArray); 
     }
     catch(e) {
         console.log(e)
@@ -192,15 +219,12 @@ async function sendAnswer() {
 }
 
 async function app() {
-    try {
         retrieveQuestion(); 
 
     setInterval(async () => {
         const question = await queueQuestion.shift()
         if (question) {
-            console.log({question})
             const summary = await generateSummary(question); 
-            console.log({summary})
             if (summary) queueSummary.push(summary); 
         }
     }, 1000)
@@ -210,10 +234,6 @@ async function app() {
     }, 1000)
 
     console.log('Service has been started!')
-    } catch (e) {
-        console.log(JSON.stringify(e)); 
-        setTimeout(app, 3000)
-    }
 }
 
 (async () => {
