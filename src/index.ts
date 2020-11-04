@@ -1,9 +1,20 @@
+import axios from "axios";
+import axiosRetry from "axios-retry";
 import * as dotenv from "dotenv";
-import needle from "needle";
+import sw from "stopword";
 import TextCleaner from "text-cleaner";
-import sw from "stopword"; 
 
 dotenv.config();
+
+axiosRetry(axios, {
+  retries: Infinity,
+  retryDelay: axiosRetry.exponentialDelay,
+  retryCondition: (error): boolean => {
+    console.log(JSON.stringify(error.message));
+    return true;
+  },
+});
+
 const queueQuestion: any[] = [];
 const queueSummary: any[] = [];
 const queueReport: any[] = [];
@@ -24,18 +35,15 @@ const rules = [
 ];
 
 async function getAllRules() {
-  const response = await needle("get", rulesURL, {
+  const response = await axios.get(rulesURL, {
     headers: {
-      authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     },
   });
 
-  if (response.statusCode !== 200) {
-    throw new Error(response.body);
-    return null;
-  }
+  if (response.status !== 200) throw new Error(response.data);
 
-  return response.body;
+  return response.data;
 }
 
 async function deleteAllRules(rules: any) {
@@ -51,19 +59,15 @@ async function deleteAllRules(rules: any) {
     },
   };
 
-  const response = await needle("post", rulesURL, data, {
+  const response = await axios.post(rulesURL, data, {
     headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     },
   });
 
-  if (response.statusCode !== 200) {
-    throw new Error(response.body);
-    return null;
-  }
+  if (response.status !== 201) throw new Error(JSON.stringify(response.data));
 
-  return response.body;
+  return response.data;
 }
 
 async function setRules() {
@@ -71,56 +75,53 @@ async function setRules() {
     add: rules,
   };
 
-  const response = await needle("post", rulesURL, data, {
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (response.statusCode !== 201) {
-    throw new Error(response.body);
-    return null;
-  }
-
-  return response.body;
-}
-
-function streamConnect(token: any) {
-  //Listen to the stream
-  const options = {
-    timeout: 20000,
+  const response = await axios.post(rulesURL, data, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
-  };
+  });
 
-  const stream = needle.get(streamURL, options);
+  if (response.status !== 201) throw new Error(JSON.stringify(response.data));
 
-  stream
-  .on("response", (response: any) => {
-    console.log(`Response: ${JSON.stringify(response.headers)} | ${JSON.stringify(response.body)}`);
-  }).on("data", (data: any) => {
-      try {
-        const json = JSON.parse(data);
-        console.log({json})
-        queueQuestion.push(json);
-      } catch (e) {
-        // Keep alive signal received. Do nothing.
-      }
+  return response.data;
+}
+
+async function streamConnect(token: any) {
+  //Listen to the stream
+
+  const stream = axios
+    .get(streamURL, {
+      timeout: 20000,
+      responseType: "stream",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     })
-    .on("err", (err: any) => {
-      if (err.code === 'ETIMEDOUT') {
-          stream.emit('timeout');
-      }
-      console.log(err);
-    }).on("done", (err: any) => {
-      if (err) console.log('An error ocurred: ' + err.message);
-      else console.log('Stream done event. ');
-    }).on("end", (err: any) => {
-      if (err) console.log('An error ocurred: ' + err.message);
-      else console.log('Stream end event. ');
-    });
+    .then((response) => {
+      const data = response.data;
+      data
+        .on("data", (data: any) => {
+          try {
+            const json = JSON.parse(data);
+            console.log({ json });
+            queueQuestion.push(json);
+          } catch (e) {
+            // Keep alive signal received. Do nothing.
+            console.log("keepalive received");
+          }
+        })
+        .on("error", (err: any) => {
+          console.log(err);
+        })
+        .on("end", (err: any) => {
+          if (err) console.log("An error ocurred: " + err.message);
+          else console.log("Stream end event. ");
+        })
+        .on("close", () => {
+          console.log("Stream close event. ");
+        });
+    })
+    .catch((error) => console.log(JSON.stringify(error)));
 
   return stream;
 }
@@ -133,17 +134,16 @@ async function recentSearch(username: string) {
     max_results: "100",
   };
 
-  const res = await needle("get", recentSearchURL, params, {
+  const response = await axios.get(recentSearchURL, {
+    params: params,
     headers: {
-      authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     },
   });
 
-  if (res.body) {
-    return res.body;
-  } else {
-    return null;
-  }
+  if (response.status !== 200) throw new Error(JSON.stringify(response.data));
+
+  return response.data;
 }
 
 async function generateWordFrequency(words: string[]) {
@@ -162,13 +162,13 @@ async function generateWordFrequency(words: string[]) {
     }
   });
 
-  const wordFrequencyArray = Object.entries(wordFrequency); 
+  const wordFrequencyArray = Object.entries(wordFrequency);
   wordFrequencyArray.sort((a, b) => b[1] - a[1]);
 
   const wordFrequencyArrayInPercent = wordFrequencyArray.map((element) => {
-    element[1] = element[1]/words.length * 100
-    return element
-  }); 
+    element[1] = (element[1] / words.length) * 100;
+    return element;
+  });
 
   return wordFrequencyArrayInPercent.splice(0, 10);
 }
@@ -190,9 +190,12 @@ async function generateWordsArray(tweets: any) {
     .condense()
     .toLowerCase()
     .valueOf();
-  
+
   // cleanup english and indonesian stop word
-  const recentTweetsConcatCleanArray = sw.removeStopwords(recentTweetsConcatClean.split(" "), [...sw.en, ...sw.id])
+  const recentTweetsConcatCleanArray = sw.removeStopwords(
+    recentTweetsConcatClean.split(" "),
+    [...sw.en, ...sw.id]
+  );
 
   return recentTweetsConcatCleanArray;
 }
@@ -219,17 +222,7 @@ async function retrieveQuestion() {
   // To avoid rate limites, this logic implements exponential backoff, so the wait time
   // will increase if the client cannot reconnect to the stream.
 
-  const filteredStream = streamConnect(token);
-  let timeout = 0;
-  filteredStream.on("timeout", () => {
-    // Reconnect on error
-    console.log("A connection error occurred. Reconnecting…");
-    setTimeout(() => {
-      timeout++;
-      streamConnect(token);
-    }, 2 ** timeout);
-    streamConnect(token);
-  });
+  await streamConnect(token);
 }
 
 async function generateSummary(question: any) {
