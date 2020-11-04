@@ -1,7 +1,6 @@
 import axios from "axios";
 import axiosRetry from "axios-retry";
 import * as dotenv from "dotenv";
-import needle from "needle";
 import sw from "stopword";
 import TextCleaner from "text-cleaner";
 
@@ -11,7 +10,7 @@ axiosRetry(axios, {
   retries: Infinity,
   retryDelay: axiosRetry.exponentialDelay,
   retryCondition: (error): boolean => {
-    console.log(JSON.stringify(error));
+    console.log(JSON.stringify(error.message));
     return true;
   },
 });
@@ -66,7 +65,7 @@ async function deleteAllRules(rules: any) {
     },
   });
 
-  if (response.status !== 201) throw new Error(response.data);
+  if (response.status !== 201) throw new Error(JSON.stringify(response.data));
 
   return response.data;
 }
@@ -82,7 +81,7 @@ async function setRules() {
     },
   });
 
-  if (response.status !== 201) throw new Error(response.data);
+  if (response.status !== 201) throw new Error(JSON.stringify(response.data));
 
   return response.data;
 }
@@ -135,17 +134,16 @@ async function recentSearch(username: string) {
     max_results: "100",
   };
 
-  const res = await needle("get", recentSearchURL, params, {
+  const response = await axios.get(recentSearchURL, {
+    params: params,
     headers: {
-      authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     },
   });
 
-  if (res.body) {
-    return res.body;
-  } else {
-    return null;
-  }
+  if (response.status !== 200) throw new Error(JSON.stringify(response.data));
+
+  return response.data;
 }
 
 async function generateWordFrequency(words: string[]) {
