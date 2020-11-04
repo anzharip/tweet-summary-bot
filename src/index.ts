@@ -1,9 +1,9 @@
-import * as dotenv from "dotenv";
-import needle from "needle";
 import axios from "axios";
 import axiosRetry from "axios-retry";
-import TextCleaner from "text-cleaner";
+import * as dotenv from "dotenv";
+import needle from "needle";
 import sw from "stopword";
+import TextCleaner from "text-cleaner";
 
 dotenv.config();
 
@@ -11,7 +11,7 @@ axiosRetry(axios, {
   retries: Infinity,
   retryDelay: axiosRetry.exponentialDelay,
   retryCondition: (error): boolean => {
-    console.log(JSON.stringify(error))
+    console.log(JSON.stringify(error));
     return true;
   },
 });
@@ -36,18 +36,15 @@ const rules = [
 ];
 
 async function getAllRules() {
-  const response = await needle("get", rulesURL, {
+  const response = await axios.get(rulesURL, {
     headers: {
-      authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     },
   });
 
-  if (response.statusCode !== 200) {
-    throw new Error(response.body);
-    return null;
-  }
+  if (response.status !== 200) throw new Error(response.data)
 
-  return response.body;
+  return response.data
 }
 
 async function deleteAllRules(rules: any) {
