@@ -98,7 +98,9 @@ function streamConnect(token: any) {
   const stream = needle.get(streamURL, options);
 
   stream
-    .on("data", (data: any) => {
+  .on("response", (response: any) => {
+    console.log(`Response: ${JSON.stringify(response.headers)} | ${JSON.stringify(response.body)}`);
+  }).on("data", (data: any) => {
       try {
         const json = JSON.parse(data);
         console.log({json})
@@ -114,7 +116,10 @@ function streamConnect(token: any) {
       console.log(err);
     }).on("done", (err: any) => {
       if (err) console.log('An error ocurred: ' + err.message);
-      else console.log('Stream done. ');
+      else console.log('Stream done event. ');
+    }).on("end", (err: any) => {
+      if (err) console.log('An error ocurred: ' + err.message);
+      else console.log('Stream end event. ');
     });
 
   return stream;
@@ -160,7 +165,12 @@ async function generateWordFrequency(words: string[]) {
   const wordFrequencyArray = Object.entries(wordFrequency); 
   wordFrequencyArray.sort((a, b) => b[1] - a[1]);
 
-  return wordFrequencyArray;
+  const wordFrequencyArrayInPercent = wordFrequencyArray.map((element) => {
+    element[1] = element[1]/words.length * 100
+    return element
+  }); 
+
+  return wordFrequencyArrayInPercent.splice(0, 10);
 }
 
 async function generateWordsArray(tweets: any) {
