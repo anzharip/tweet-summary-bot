@@ -3,6 +3,7 @@ import axiosRetry from "axios-retry";
 import * as dotenv from "dotenv";
 import sw from "stopword";
 import TextCleaner from "text-cleaner";
+import Twitter from "twitter-lite";
 
 dotenv.config();
 
@@ -120,6 +121,7 @@ async function streamConnect(token: any) {
         .on("close", () => {
           console.log("Stream close event. ");
         });
+      return response;
     })
     .catch((error) => console.log(JSON.stringify(error)));
 
@@ -229,15 +231,37 @@ async function generateSummary(question: any) {
   try {
     const recentTweets = await recentSearch(question.data.in_reply_to_user_id);
     const wordsArray = await generateWordsArray(recentTweets);
-    return generateWordFrequency(wordsArray);
+    const wordFrequency = await generateWordFrequency(wordsArray);
+    return {
+      wordFrequency: wordFrequency,
+      replyToStatusId: question.data.id || "",
+    };
   } catch (e) {
     console.log(e);
     return null;
   }
 }
 
-async function sendAnswer() {
-  return;
+async function sendAnswer(summary: any) {
+  const client = new Twitter({
+    subdomain: "api", // "api" is the default (change for other subdomains)
+    version: "1.1", // version "1.1" is the default (change for other subdomains)
+    consumer_key: process.env.TWITTER_API_KEY || "", // from Twitter.
+    consumer_secret: process.env.TWITTER_API_SECRET_KEY || "", // from Twitter.
+    access_token_key: process.env.TWITTER_ACCESS_TOKEN_KEY || "", // from your User (oauth_token)
+    access_token_secret: process.env.TWITTER_ACCESS_TOKEN_SECRET_KEY || "", // from your User (oauth_token_secret)
+  });
+  try {
+    const tweet = await client.post("statuses/update", {
+      status: JSON.stringify(summary.wordFrequency).substring(0, 120),
+      in_reply_to_status_id: summary.replyToStatusId || "",
+      auto_populate_reply_metadata: true,
+    });
+    return tweet;
+  } catch (error) {
+    console.log(error);
+    return;
+  }
 }
 
 async function app() {
@@ -254,7 +278,14 @@ async function app() {
   }, 1000);
 
   setInterval(async () => {
-    sendAnswer();
+    const summary = queueSummary.shift();
+    if (summary) {
+      try {
+        sendAnswer(summary);
+      } catch (error) {
+        console.log(error);
+      }
+    }
   }, 1000);
 
   console.log("Service has been started!");
