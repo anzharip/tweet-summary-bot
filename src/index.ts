@@ -42,9 +42,9 @@ async function getAllRules() {
     },
   });
 
-  if (response.status !== 200) throw new Error(response.data)
+  if (response.status !== 200) throw new Error(response.data);
 
-  return response.data
+  return response.data;
 }
 
 async function deleteAllRules(rules: any) {
@@ -60,19 +60,15 @@ async function deleteAllRules(rules: any) {
     },
   };
 
-  const response = await needle("post", rulesURL, data, {
+  const response = await axios.post(rulesURL, data, {
     headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     },
   });
 
-  if (response.statusCode !== 200) {
-    throw new Error(response.body);
-    return null;
-  }
+  if (response.status !== 201) throw new Error(response.data);
 
-  return response.body;
+  return response.data;
 }
 
 async function setRules() {
@@ -80,19 +76,15 @@ async function setRules() {
     add: rules,
   };
 
-  const response = await needle("post", rulesURL, data, {
+  const response = await axios.post(rulesURL, data, {
     headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     },
   });
 
-  if (response.statusCode !== 201) {
-    throw new Error(response.body);
-    return null;
-  }
+  if (response.status !== 201) throw new Error(response.data);
 
-  return response.body;
+  return response.data;
 }
 
 async function streamConnect(token: any) {
