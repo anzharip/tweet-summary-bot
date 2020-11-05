@@ -10,122 +10,31 @@ dotenv.config();
 
 axiosRetry(axios, {
   retries: Infinity,
-  retryDelay: axiosRetry.exponentialDelay,
+  shouldResetTimeout: true,
+  retryDelay: (retryNumber = 0) => {
+    return 60000 * Math.pow(2, retryNumber);
+  },
   retryCondition: (error): boolean => {
-    console.log(JSON.stringify(error.message));
+    console.log(JSON.stringify(error));
     return true;
   },
 });
+
+const twitterLiteConfig = {
+  subdomain: "api", // "api" is the default (change for other subdomains)
+  version: "1.1", // version "1.1" is the default (change for other subdomains)
+  consumer_key: process.env.TWITTER_API_KEY || "", // from Twitter.
+  consumer_secret: process.env.TWITTER_API_SECRET_KEY || "", // from Twitter.
+  access_token_key: process.env.TWITTER_ACCESS_TOKEN_KEY || "", // from your User (oauth_token)
+  access_token_secret: process.env.TWITTER_ACCESS_TOKEN_SECRET_KEY || "", // from your User (oauth_token_secret)
+};
 
 const queueQuestion: any[] = [];
 const queueSummary: any[] = [];
 const queueReport: any[] = [];
 
-// The code below sets the bearer token from your environment variables
-// To set environment variables on Mac OS X, run the export command below from the terminal:
-// export BEARER_TOKEN='YOUR-TOKEN'
-const token = process.env.TWITTER_BEARER_TOKEN;
-
-const rulesURL = "https://api.twitter.com/2/tweets/search/stream/rules";
-const streamURL =
-  "https://api.twitter.com/2/tweets/search/stream?expansions=attachments.poll_ids,attachments.media_keys,author_id,entities.mentions.username,geo.place_id,in_reply_to_user_id,referenced_tweets.id,referenced_tweets.id.author_id";
+const token = process.env.TWITTER_BEARER_TOKEN || "";
 const recentSearchURL = "https://api.twitter.com/2/tweets/search/recent";
-
-// Edit rules as desired here below
-const rules = [
-  { value: `${process.env.TWITTER_ACCOUNT_TO_LISTEN}`, tag: "monitor-mention" },
-];
-
-async function getAllRules() {
-  const response = await axios.get(rulesURL, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (response.status !== 200) throw new Error(response.data);
-
-  return response.data;
-}
-
-async function deleteAllRules(rules: any) {
-  if (!Array.isArray(rules.data)) {
-    return;
-  }
-
-  const ids = rules.data.map((rule: any) => rule.id);
-
-  const data = {
-    delete: {
-      ids: ids,
-    },
-  };
-
-  const response = await axios.post(rulesURL, data, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (response.status !== 201) throw new Error(JSON.stringify(response.data));
-
-  return response.data;
-}
-
-async function setRules() {
-  const data = {
-    add: rules,
-  };
-
-  const response = await axios.post(rulesURL, data, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (response.status !== 201) throw new Error(JSON.stringify(response.data));
-
-  return response.data;
-}
-
-async function streamConnect(token: any) {
-  //Listen to the stream
-
-  return axios
-    .get(streamURL, {
-      timeout: 20000,
-      responseType: "stream",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-    .then((response) => {
-      const data = response.data;
-      data
-        .on("data", (data: any) => {
-          try {
-            const json = JSON.parse(data);
-            console.log({ json });
-            queueQuestion.push(json);
-          } catch {
-            // Keep alive signal received. Do nothing.
-            console.log("Keepalive received");
-          }
-        })
-        .on("error", (error: any) => {
-          console.log(error);
-        })
-        .on("end", (error: any) => {
-          if (error) console.log("An error ocurred: " + error.message);
-          else console.log("Stream end event. ");
-        })
-        .on("close", () => {
-          console.log("Stream close event. ");
-        });
-      return response;
-    })
-    .catch((error) => console.log(JSON.stringify(error)));
-}
 
 async function recentSearch(username: string) {
   // Edit query parameters below
@@ -198,37 +107,31 @@ async function generateWordsArray(tweets: any) {
 }
 
 async function retrieveQuestion() {
-  let currentRules;
+  const client = new Twitter(twitterLiteConfig);
 
-  try {
-    // Gets the complete list of rules currently applied to the stream
-    currentRules = await getAllRules();
+  const parameters = {
+    track: process.env.TWITTER_ACCOUNT_TO_LISTEN || "",
+  };
 
-    // Delete all rules. Comment the line below if you want to keep your existing rules.
-    await deleteAllRules(currentRules);
-
-    // Add rules to the stream. Comment the line below if you don't want to add new rules.
-    await setRules();
-  } catch (error) {
-    console.error(JSON.stringify(error));
-  }
-
-  // Listen to the stream.
-  // This reconnection logic will attempt to reconnect when a disconnection is detected.
-  // To avoid rate limites, this logic implements exponential backoff, so the wait time
-  // will increase if the client cannot reconnect to the stream.
-
-  await streamConnect(token);
+  client
+    .stream("statuses/filter", parameters)
+    .on("start", () => console.log("Streaming start"))
+    .on("data", (data) => {
+      queueQuestion.push(data);
+    })
+    .on("ping", () => console.log("Keepalive received"))
+    .on("error", (error) => console.log("error", error))
+    .on("end", () => console.log("Streaming end"));
 }
 
 async function generateSummary(question: any) {
   try {
-    const recentTweets = await recentSearch(question.data.in_reply_to_user_id);
+    const recentTweets = await recentSearch(question.in_reply_to_user_id_str);
     const wordsArray = await generateWordsArray(recentTweets);
     const wordFrequency = await generateWordFrequency(wordsArray);
     return {
       wordFrequency: wordFrequency,
-      replyToStatusId: question.data.id || "",
+      replyToStatusId: question.id_str || "",
     };
   } catch (error) {
     console.log(error);
@@ -237,14 +140,7 @@ async function generateSummary(question: any) {
 }
 
 async function sendAnswer(summary: any) {
-  const client = new Twitter({
-    subdomain: "api", // "api" is the default (change for other subdomains)
-    version: "1.1", // version "1.1" is the default (change for other subdomains)
-    consumer_key: process.env.TWITTER_API_KEY || "", // from Twitter.
-    consumer_secret: process.env.TWITTER_API_SECRET_KEY || "", // from Twitter.
-    access_token_key: process.env.TWITTER_ACCESS_TOKEN_KEY || "", // from your User (oauth_token)
-    access_token_secret: process.env.TWITTER_ACCESS_TOKEN_SECRET_KEY || "", // from your User (oauth_token_secret)
-  });
+  const client = new Twitter(twitterLiteConfig);
   try {
     return await client.post("statuses/update", {
       status: JSON.stringify(summary.wordFrequency).slice(0, 120),
