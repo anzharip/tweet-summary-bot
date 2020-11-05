@@ -4,6 +4,7 @@ import * as dotenv from "dotenv";
 import sw from "stopword";
 import TextCleaner from "text-cleaner";
 import Twitter from "twitter-lite";
+import { WordFrequency } from "./interfaces/word-frequency.interface";
 
 dotenv.config();
 
@@ -150,11 +151,9 @@ async function generateWordFrequency(words: string[]) {
   if (words.length === 0) {
     return;
   }
-  interface WordFrequency {
-    [key: string]: number;
-  }
   const wordFrequency: WordFrequency = {};
   words.forEach((element: string) => {
+    // Keep track of occurences
     if (Object.prototype.hasOwnProperty.call(wordFrequency, element)) {
       wordFrequency[element] += 1;
     } else {
