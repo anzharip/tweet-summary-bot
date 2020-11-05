@@ -106,10 +106,9 @@ async function streamConnect(token: any) {
             const json = JSON.parse(data);
             console.log({ json });
             queueQuestion.push(json);
-          } catch (error) {
+          } catch {
             // Keep alive signal received. Do nothing.
-            console.log(JSON.stringify(error));
-            console.log("keepalive received");
+            console.log("Keepalive received");
           }
         })
         .on("error", (error: any) => {
