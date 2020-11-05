@@ -49,7 +49,7 @@ async function getAllRules() {
 
 async function deleteAllRules(rules: any) {
   if (!Array.isArray(rules.data)) {
-    return null;
+    return;
   }
 
   const ids = rules.data.map((rule: any) => rule.id);
@@ -90,7 +90,7 @@ async function setRules() {
 async function streamConnect(token: any) {
   //Listen to the stream
 
-  const stream = axios
+  return axios
     .get(streamURL, {
       timeout: 20000,
       responseType: "stream",
@@ -106,16 +106,17 @@ async function streamConnect(token: any) {
             const json = JSON.parse(data);
             console.log({ json });
             queueQuestion.push(json);
-          } catch (e) {
+          } catch (error) {
             // Keep alive signal received. Do nothing.
+            console.log(JSON.stringify(error));
             console.log("keepalive received");
           }
         })
-        .on("error", (err: any) => {
-          console.log(err);
+        .on("error", (error: any) => {
+          console.log(error);
         })
-        .on("end", (err: any) => {
-          if (err) console.log("An error ocurred: " + err.message);
+        .on("end", (error: any) => {
+          if (error) console.log("An error ocurred: " + error.message);
           else console.log("Stream end event. ");
         })
         .on("close", () => {
@@ -124,20 +125,18 @@ async function streamConnect(token: any) {
       return response;
     })
     .catch((error) => console.log(JSON.stringify(error)));
-
-  return stream;
 }
 
 async function recentSearch(username: string) {
   // Edit query parameters below
-  const params = {
+  const parameters = {
     query: `from:${username} -is:retweet`,
     "tweet.fields": "author_id",
     max_results: "100",
   };
 
   const response = await axios.get(recentSearchURL, {
-    params: params,
+    params: parameters,
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -194,12 +193,10 @@ async function generateWordsArray(tweets: any) {
     .valueOf();
 
   // cleanup english and indonesian stop word
-  const recentTweetsConcatCleanArray = sw.removeStopwords(
-    recentTweetsConcatClean.split(" "),
-    [...sw.en, ...sw.id]
-  );
-
-  return recentTweetsConcatCleanArray;
+  return sw.removeStopwords(recentTweetsConcatClean.split(" "), [
+    ...sw.en,
+    ...sw.id,
+  ]);
 }
 
 async function retrieveQuestion() {
@@ -214,9 +211,8 @@ async function retrieveQuestion() {
 
     // Add rules to the stream. Comment the line below if you don't want to add new rules.
     await setRules();
-  } catch (e) {
-    console.error(e);
-    process.exit(-1);
+  } catch (error) {
+    console.error(JSON.stringify(error));
   }
 
   // Listen to the stream.
@@ -236,9 +232,9 @@ async function generateSummary(question: any) {
       wordFrequency: wordFrequency,
       replyToStatusId: question.data.id || "",
     };
-  } catch (e) {
-    console.log(e);
-    return null;
+  } catch (error) {
+    console.log(error);
+    return;
   }
 }
 
@@ -252,12 +248,11 @@ async function sendAnswer(summary: any) {
     access_token_secret: process.env.TWITTER_ACCESS_TOKEN_SECRET_KEY || "", // from your User (oauth_token_secret)
   });
   try {
-    const tweet = await client.post("statuses/update", {
-      status: JSON.stringify(summary.wordFrequency).substring(0, 120),
+    return await client.post("statuses/update", {
+      status: JSON.stringify(summary.wordFrequency).slice(0, 120),
       in_reply_to_status_id: summary.replyToStatusId || "",
       auto_populate_reply_metadata: true,
     });
-    return tweet;
   } catch (error) {
     console.log(error);
     return;
