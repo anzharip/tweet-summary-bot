@@ -170,7 +170,7 @@ async function generateWordFrequency(words: string[]) {
     return element;
   });
 
-  return wordFrequencyArrayInPercent.splice(0, 10);
+  return wordFrequencyArrayInPercent.splice(0, 5);
 }
 
 async function generateWordsArray(tweets: any) {
