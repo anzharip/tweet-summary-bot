@@ -8,6 +8,9 @@ import { WordFrequency } from "./interfaces/word-frequency.interface";
 
 dotenv.config();
 
+const regexTwitterHandle = /(\s+|^)@\S+/g; 
+const regexURL = /(?:https?|ftp):\/\/[\S\n]+/g; 
+
 axiosRetry(axios, {
   retries: Infinity,
   shouldResetTimeout: true,
@@ -90,6 +93,10 @@ async function generateWordsArray(tweets: any) {
         recentTweetsConcat = recentTweetsConcat + " " + element.text;
     });
   }
+  // Remove twitter handle 
+  recentTweetsConcat = recentTweetsConcat.replace(regexTwitterHandle, "")
+  // Remove URL 
+  recentTweetsConcat = recentTweetsConcat.replace(regexURL, "")
   const recentTweetsConcatClean = TextCleaner(recentTweetsConcat)
     .stripHtml()
     .removeChars()
