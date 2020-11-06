@@ -73,12 +73,10 @@ async function generateWordFrequency(words: string[]) {
   const wordFrequencyArray = Object.entries(wordFrequency);
   wordFrequencyArray.sort((a, b) => b[1] - a[1]);
 
-  const wordFrequencyArrayInPercent = wordFrequencyArray.map((element) => {
+  return wordFrequencyArray.map((element) => {
     element[1] = (element[1] / words.length) * 100;
     return element;
   });
-
-  return wordFrequencyArrayInPercent.splice(0, 5);
 }
 
 async function generateWordsArray(tweets: any) {
@@ -141,9 +139,10 @@ async function generateSummary(question: any) {
 
 async function sendAnswer(summary: any) {
   const client = new Twitter(twitterLiteConfig);
+  const status = summary.wordFrequency.splice(0, 5).map((element: any) => element[0]).join(", ")
   try {
     return await client.post("statuses/update", {
-      status: JSON.stringify(summary.wordFrequency).slice(0, 120),
+      status: `Most frequent words: ${status.slice(0, 120)}`,
       in_reply_to_status_id: summary.replyToStatusId || "",
       auto_populate_reply_metadata: true,
     });
