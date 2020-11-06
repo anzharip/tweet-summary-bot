@@ -5,11 +5,16 @@ import sw from "stopword";
 import TextCleaner from "text-cleaner";
 import Twitter from "twitter-lite";
 import { WordFrequency } from "./interfaces/word-frequency.interface";
+import Translate from '@google-cloud/translate';
+import language from '@google-cloud/language';
 
 dotenv.config();
 
 const regexTwitterHandle = /(\s+|^)@\S+/g; 
 const regexURL = /(?:https?|ftp):\/\/[\S\n]+/g; 
+
+const translate = new Translate.v2.Translate(); 
+const sentiment = new language.LanguageServiceClient();
 
 axiosRetry(axios, {
   retries: Infinity,
@@ -44,7 +49,7 @@ async function recentSearch(username: string) {
   const parameters = {
     query: `from:${username} -is:retweet`,
     "tweet.fields": "author_id",
-    max_results: "100",
+    max_results: 100,
   };
 
   const response = await axios.get(recentSearchURL, {
@@ -111,6 +116,24 @@ async function generateWordsArray(tweets: any) {
   ]);
 }
 
+async function translateText(text: string) {
+  // Translates the text into the target language. "text" can be a string for
+  // translating a single piece of text, or an array of strings for translating
+  // multiple texts.
+  return await translate.translate(text, process.env.GOOGLE_API_TRANSLATE_TARGET_LANGUAGE || "en")
+}
+
+async function analyseSentiment(text: string) {
+  const document: any = {
+    content: text,
+    type: 'PLAIN_TEXT',
+  };
+
+  // Detects the sentiment of the text
+  const [result] = await sentiment.analyzeSentiment({document: document});
+  return result; 
+}
+
 async function retrieveQuestion() {
   const client = new Twitter(twitterLiteConfig);
 
@@ -132,11 +155,15 @@ async function retrieveQuestion() {
 async function generateSummary(question: any) {
   try {
     const recentTweets = await recentSearch(question.in_reply_to_user_id_str);
+    console.log(JSON.stringify(recentTweets)); 
     const wordsArray = await generateWordsArray(recentTweets);
     const wordFrequency = await generateWordFrequency(wordsArray);
+    const translate: unknown = await translateText(wordsArray.join(" ")); 
+    const sentiment = await analyseSentiment(translate as string); 
     return {
       wordFrequency: wordFrequency,
       replyToStatusId: question.id_str || "",
+      sentiment: sentiment
     };
   } catch (error) {
     console.log(error);
@@ -147,9 +174,17 @@ async function generateSummary(question: any) {
 async function sendAnswer(summary: any) {
   const client = new Twitter(twitterLiteConfig);
   const status = summary.wordFrequency.splice(0, 5).map((element: any) => element[0]).join(", ")
+  const sentimentScore = summary.sentiment.documentSentiment.score || 0; 
+  const sentimentScoreRounded = Number.parseFloat(sentimentScore).toFixed(2)
+  const magnitudeScore = summary.sentiment.documentSentiment.magnitude || 0;
+  const magnitudeScoreRounded = Number.parseFloat(magnitudeScore).toFixed(2) 
+  let sentimentScoreString = "Neutral"; 
+  if (sentimentScore <= -0.25 && sentimentScore >= -1) {sentimentScoreString = "Negative" }
+  else if (sentimentScore <= 0.25 && sentimentScore >= -0.25) {sentimentScoreString = "Neutral"}
+  else if (sentimentScore <= 1 && sentimentScore >= 0.25) {sentimentScoreString = "Positive"}
   try {
     return await client.post("statuses/update", {
-      status: `Most frequent words: ${status.slice(0, 120)}`,
+      status: `Most frequent words last 7 days: ${status.slice(0, 120)}. Sentiment score: ${sentimentScoreRounded}, magnitude: ${magnitudeScoreRounded} (Tend to be ${sentimentScoreString}).`,
       in_reply_to_status_id: summary.replyToStatusId || "",
       auto_populate_reply_metadata: true,
     });
