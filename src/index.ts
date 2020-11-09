@@ -7,8 +7,13 @@ import Twitter from "twitter-lite";
 import { WordFrequency } from "./interfaces/word-frequency.interface";
 import Translate from '@google-cloud/translate';
 import language from '@google-cloud/language';
+import pino from "pino"; 
 
 dotenv.config();
+
+const logger = pino({
+  prettyPrint: true
+})
 
 const regexTwitterHandle = /(\s+|^)@\S+/g; 
 const regexURL = /(?:https?|ftp):\/\/[\S\n]+/g; 
@@ -23,7 +28,7 @@ axiosRetry(axios, {
     return 60000 * Math.pow(2, retryNumber);
   },
   retryCondition: (error): boolean => {
-    console.log(JSON.stringify(error));
+    logger.error(error)
     return true;
   },
 });
@@ -143,19 +148,18 @@ async function retrieveQuestion() {
 
   client
     .stream("statuses/filter", parameters)
-    .on("start", () => console.log("Streaming start"))
+    .on("start", () => logger.info("Streaming start"))
     .on("data", (data) => {
       queueQuestion.push(data);
     })
-    .on("ping", () => console.log("Keepalive received"))
-    .on("error", (error) => console.log("error", error))
-    .on("end", () => console.log("Streaming end"));
+    .on("ping", () => logger.info("Keepalive received"))
+    .on("error", (error) => logger.error(error))
+    .on("end", () => logger.info("Streaming end"));
 }
 
 async function generateSummary(question: any) {
   try {
     const recentTweets = await recentSearch(question.in_reply_to_user_id_str);
-    console.log(JSON.stringify(recentTweets)); 
     const wordsArray = await generateWordsArray(recentTweets);
     const wordFrequency = await generateWordFrequency(wordsArray);
     const translate: unknown = await translateText(wordsArray.join(" ")); 
@@ -166,7 +170,7 @@ async function generateSummary(question: any) {
       sentiment: sentiment
     };
   } catch (error) {
-    console.log(error);
+    logger.error(error);
     return;
   }
 }
@@ -189,7 +193,7 @@ async function sendAnswer(summary: any) {
       auto_populate_reply_metadata: true,
     });
   } catch (error) {
-    console.log(error);
+    logger.error(error);
     return;
   }
 }
@@ -200,9 +204,7 @@ async function app() {
   setInterval(async () => {
     const question = await queueQuestion.shift();
     if (question) {
-      console.log(question);
       const summary = await generateSummary(question);
-      console.log(summary);
       if (summary) queueSummary.push(summary);
     }
   }, 1000);
@@ -213,12 +215,12 @@ async function app() {
       try {
         sendAnswer(summary);
       } catch (error) {
-        console.log(error);
+        logger.error(error);
       }
     }
   }, 1000);
 
-  console.log("Service has been started!");
+  logger.info("Service has been started!");
 }
 
 (async () => {
