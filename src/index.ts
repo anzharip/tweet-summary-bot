@@ -1,5 +1,3 @@
-import language from "@google-cloud/language";
-import Translate from "@google-cloud/translate";
 import axios from "axios";
 import axiosRetry from "axios-retry";
 import * as dotenv from "dotenv";
@@ -8,15 +6,14 @@ import TextCleaner from "text-cleaner";
 import Twitter from "twitter-lite";
 import { Tweet } from "./interfaces/twitter/tweet.interface";
 import { WordFrequency } from "./interfaces/word-frequency.interface";
+import { sentiment } from "./utility/gcp/sentiment";
+import { translate } from "./utility/gcp/translate";
 import { logger } from "./utility/logger";
 
 dotenv.config();
 
 const regexTwitterHandle = /(\s+|^)@\S+/g;
 const regexURL = /(?:https?|ftp):\/\/[\S\n]+/g;
-
-const translate = new Translate.v2.Translate();
-const sentiment = new language.LanguageServiceClient();
 
 axiosRetry(axios, {
   retries: Infinity,
