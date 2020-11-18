@@ -1,5 +1,5 @@
 import { logger } from "./utility/logger";
-import { twitterClient } from "./utility/twitter-client";
+import { twitterClient } from "./utility/twitter/twitter-client";
 
 export async function sendAnswer(summary: any): Promise<void> {
   const client = twitterClient();

@@ -1,8 +1,8 @@
 import { Tweet } from "./interfaces/twitter/tweet.interface";
 import { logger } from "./utility/logger";
 import { queueQuestion } from "./utility/queue";
-import { isTweetLooping } from "./utility/tweet-checks";
-import { twitterClient } from "./utility/twitter-client";
+import { isTweetLooping } from "./utility/twitter/tweet-checks";
+import { twitterClient } from "./utility/twitter/twitter-client";
 
 export function retrieveQuestion(): void {
   const client = twitterClient();

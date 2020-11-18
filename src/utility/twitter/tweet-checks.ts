@@ -1,4 +1,4 @@
-import { Tweet } from "../interfaces/twitter/tweet.interface";
+import { Tweet } from "../../interfaces/twitter/tweet.interface";
 
 export function isTweetLooping(tweet: Tweet): boolean {
   // check if in reply to of the incoming tweets is replying to the bot or not
