@@ -3,18 +3,14 @@ import Translate from "@google-cloud/translate";
 import axios from "axios";
 import axiosRetry from "axios-retry";
 import * as dotenv from "dotenv";
-import pino from "pino";
 import sw from "stopword";
 import TextCleaner from "text-cleaner";
 import Twitter from "twitter-lite";
 import { Tweet } from "./interfaces/twitter/tweet.interface";
 import { WordFrequency } from "./interfaces/word-frequency.interface";
+import { logger } from "./utility/logger";
 
 dotenv.config();
-
-const logger = pino({
-  prettyPrint: true,
-});
 
 const regexTwitterHandle = /(\s+|^)@\S+/g;
 const regexURL = /(?:https?|ftp):\/\/[\S\n]+/g;
