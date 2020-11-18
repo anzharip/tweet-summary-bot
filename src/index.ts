@@ -1,24 +1,25 @@
+import language from "@google-cloud/language";
+import Translate from "@google-cloud/translate";
 import axios from "axios";
 import axiosRetry from "axios-retry";
 import * as dotenv from "dotenv";
+import pino from "pino";
 import sw from "stopword";
 import TextCleaner from "text-cleaner";
 import Twitter from "twitter-lite";
+import { Tweet } from "./interfaces/twitter/tweet.interface";
 import { WordFrequency } from "./interfaces/word-frequency.interface";
-import Translate from '@google-cloud/translate';
-import language from '@google-cloud/language';
-import pino from "pino"; 
 
 dotenv.config();
 
 const logger = pino({
-  prettyPrint: true
-})
+  prettyPrint: true,
+});
 
-const regexTwitterHandle = /(\s+|^)@\S+/g; 
-const regexURL = /(?:https?|ftp):\/\/[\S\n]+/g; 
+const regexTwitterHandle = /(\s+|^)@\S+/g;
+const regexURL = /(?:https?|ftp):\/\/[\S\n]+/g;
 
-const translate = new Translate.v2.Translate(); 
+const translate = new Translate.v2.Translate();
 const sentiment = new language.LanguageServiceClient();
 
 axiosRetry(axios, {
@@ -28,7 +29,7 @@ axiosRetry(axios, {
     return 60000 * Math.pow(2, retryNumber);
   },
   retryCondition: (error): boolean => {
-    logger.error(error)
+    logger.error(error);
     return true;
   },
 });
@@ -42,7 +43,7 @@ const twitterLiteConfig = {
   access_token_secret: process.env.TWITTER_ACCESS_TOKEN_SECRET_KEY || "", // from your User (oauth_token_secret)
 };
 
-const queueQuestion: any[] = [];
+const queueQuestion: Tweet[] = [];
 const queueSummary: any[] = [];
 const queueReport: any[] = [];
 
@@ -103,10 +104,10 @@ async function generateWordsArray(tweets: any) {
         recentTweetsConcat = recentTweetsConcat + " " + element.text;
     });
   }
-  // Remove twitter handle 
-  recentTweetsConcat = recentTweetsConcat.replace(regexTwitterHandle, "")
-  // Remove URL 
-  recentTweetsConcat = recentTweetsConcat.replace(regexURL, "")
+  // Remove twitter handle
+  recentTweetsConcat = recentTweetsConcat.replace(regexTwitterHandle, "");
+  // Remove URL
+  recentTweetsConcat = recentTweetsConcat.replace(regexURL, "");
   const recentTweetsConcatClean = TextCleaner(recentTweetsConcat)
     .stripHtml()
     .removeChars()
@@ -125,18 +126,29 @@ async function translateText(text: string) {
   // Translates the text into the target language. "text" can be a string for
   // translating a single piece of text, or an array of strings for translating
   // multiple texts.
-  return await translate.translate(text, process.env.GOOGLE_API_TRANSLATE_TARGET_LANGUAGE || "en")
+  return await translate.translate(
+    text,
+    process.env.GOOGLE_API_TRANSLATE_TARGET_LANGUAGE || "en"
+  );
 }
 
 async function analyseSentiment(text: string) {
   const document: any = {
     content: text,
-    type: 'PLAIN_TEXT',
+    type: "PLAIN_TEXT",
   };
 
   // Detects the sentiment of the text
-  const [result] = await sentiment.analyzeSentiment({document: document});
-  return result; 
+  const [result] = await sentiment.analyzeSentiment({ document: document });
+  return result;
+}
+
+async function isTweetLooping(tweet: Tweet) {
+  // check if in reply to of the incoming tweets is replying to the bot or not
+  return tweet.in_reply_to_screen_name ===
+    (process.env.TWITTER_ACCOUNT_TO_LISTEN as string).replace("@", "")
+    ? true
+    : false;
 }
 
 async function retrieveQuestion() {
@@ -149,8 +161,10 @@ async function retrieveQuestion() {
   client
     .stream("statuses/filter", parameters)
     .on("start", () => logger.info("Streaming start"))
-    .on("data", (data) => {
-      queueQuestion.push(data);
+    .on("data", async (data: Tweet) => {
+      if ((await isTweetLooping(data)) === false) {
+        queueQuestion.push(data);
+      }
     })
     .on("ping", () => logger.info("Keepalive received"))
     .on("error", (error) => logger.error(error))
@@ -162,12 +176,12 @@ async function generateSummary(question: any) {
     const recentTweets = await recentSearch(question.in_reply_to_user_id_str);
     const wordsArray = await generateWordsArray(recentTweets);
     const wordFrequency = await generateWordFrequency(wordsArray);
-    const translate: unknown = await translateText(wordsArray.join(" ")); 
-    const sentiment = await analyseSentiment(translate as string); 
+    const translate: unknown = await translateText(wordsArray.join(" "));
+    const sentiment = await analyseSentiment(translate as string);
     return {
       wordFrequency: wordFrequency,
       replyToStatusId: question.id_str || "",
-      sentiment: sentiment
+      sentiment: sentiment,
     };
   } catch (error) {
     logger.error(error);
@@ -177,18 +191,28 @@ async function generateSummary(question: any) {
 
 async function sendAnswer(summary: any) {
   const client = new Twitter(twitterLiteConfig);
-  const status = summary.wordFrequency.splice(0, 5).map((element: any) => element[0]).join(", ")
-  const sentimentScore = summary.sentiment.documentSentiment.score || 0; 
-  const sentimentScoreRounded = Number.parseFloat(sentimentScore).toFixed(2)
+  const status = summary.wordFrequency
+    .splice(0, 5)
+    .map((element: any) => element[0])
+    .join(", ");
+  const sentimentScore = summary.sentiment.documentSentiment.score || 0;
+  const sentimentScoreRounded = Number.parseFloat(sentimentScore).toFixed(2);
   const magnitudeScore = summary.sentiment.documentSentiment.magnitude || 0;
-  const magnitudeScoreRounded = Number.parseFloat(magnitudeScore).toFixed(2) 
-  let sentimentScoreString = "Neutral"; 
-  if (sentimentScore <= -0.25 && sentimentScore >= -1) {sentimentScoreString = "Negative" }
-  else if (sentimentScore <= 0.25 && sentimentScore >= -0.25) {sentimentScoreString = "Neutral"}
-  else if (sentimentScore <= 1 && sentimentScore >= 0.25) {sentimentScoreString = "Positive"}
+  const magnitudeScoreRounded = Number.parseFloat(magnitudeScore).toFixed(2);
+  let sentimentScoreString = "Neutral";
+  if (sentimentScore <= -0.25 && sentimentScore >= -1) {
+    sentimentScoreString = "Negative";
+  } else if (sentimentScore <= 0.25 && sentimentScore >= -0.25) {
+    sentimentScoreString = "Neutral";
+  } else if (sentimentScore <= 1 && sentimentScore >= 0.25) {
+    sentimentScoreString = "Positive";
+  }
   try {
     return await client.post("statuses/update", {
-      status: `Most frequent words last 7 days: ${status.slice(0, 120)}. Sentiment score: ${sentimentScoreRounded}, magnitude: ${magnitudeScoreRounded} (Tend to be ${sentimentScoreString}).`,
+      status: `Most frequent words last 7 days: ${status.slice(
+        0,
+        120
+      )}. Sentiment score: ${sentimentScoreRounded}, magnitude: ${magnitudeScoreRounded} (Tend to be ${sentimentScoreString}).`,
       in_reply_to_status_id: summary.replyToStatusId || "",
       auto_populate_reply_metadata: true,
     });
