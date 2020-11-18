@@ -6,13 +6,13 @@ import sw from "stopword";
 import TextCleaner from "text-cleaner";
 import { retrieveQuestion } from "./incoming";
 import { WordFrequency } from "./interfaces/word-frequency.interface";
+import { sendAnswer } from "./outgoing";
 import { axiosClient } from "./utility/axios-retry-configuration";
 import { sentiment } from "./utility/gcp/sentiment";
 import { translate } from "./utility/gcp/translate";
 import { logger } from "./utility/logger";
 import { queueQuestion, queueSummary } from "./utility/queue";
 import { regexTwitterHandle, regexURL } from "./utility/regex";
-import { twitterClient } from "./utility/twitter-client";
 
 const token = process.env.TWITTER_BEARER_TOKEN || "";
 const recentSearchURL = "https://api.twitter.com/2/tweets/search/recent";
@@ -122,39 +122,6 @@ async function generateSummary(question: any) {
       replyToStatusId: question.id_str || "",
       sentiment: sentiment,
     };
-  } catch (error) {
-    logger.error(error);
-    return;
-  }
-}
-
-async function sendAnswer(summary: any) {
-  const client = twitterClient();
-  const status = summary.wordFrequency
-    .splice(0, 5)
-    .map((element: any) => element[0])
-    .join(", ");
-  const sentimentScore = summary.sentiment.documentSentiment.score || 0;
-  const sentimentScoreRounded = Number.parseFloat(sentimentScore).toFixed(2);
-  const magnitudeScore = summary.sentiment.documentSentiment.magnitude || 0;
-  const magnitudeScoreRounded = Number.parseFloat(magnitudeScore).toFixed(2);
-  let sentimentScoreString = "Neutral";
-  if (sentimentScore <= -0.25 && sentimentScore >= -1) {
-    sentimentScoreString = "Negative";
-  } else if (sentimentScore <= 0.25 && sentimentScore >= -0.25) {
-    sentimentScoreString = "Neutral";
-  } else if (sentimentScore <= 1 && sentimentScore >= 0.25) {
-    sentimentScoreString = "Positive";
-  }
-  try {
-    return await client.post("statuses/update", {
-      status: `Most frequent words last 7 days: ${status.slice(
-        0,
-        120
-      )}. Sentiment score: ${sentimentScoreRounded}, magnitude: ${magnitudeScoreRounded} (Tend to be ${sentimentScoreString}).`,
-      in_reply_to_status_id: summary.replyToStatusId || "",
-      auto_populate_reply_metadata: true,
-    });
   } catch (error) {
     logger.error(error);
     return;
