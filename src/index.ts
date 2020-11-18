@@ -1,5 +1,3 @@
-import axios from "axios";
-import axiosRetry from "axios-retry";
 // Make sure dotenv import is as high as possible to make sure the the env
 // variables is loaded properly before any other imports that depends on it
 // (ref: https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import)
@@ -8,23 +6,12 @@ import sw from "stopword";
 import TextCleaner from "text-cleaner";
 import { Tweet } from "./interfaces/twitter/tweet.interface";
 import { WordFrequency } from "./interfaces/word-frequency.interface";
+import { axiosClient } from "./utility/axios-retry-configuration";
 import { sentiment } from "./utility/gcp/sentiment";
 import { translate } from "./utility/gcp/translate";
 import { logger } from "./utility/logger";
 import { regexTwitterHandle, regexURL } from "./utility/regex";
 import { twitterClient } from "./utility/twitter-client";
-
-axiosRetry(axios, {
-  retries: Infinity,
-  shouldResetTimeout: true,
-  retryDelay: (retryNumber = 0) => {
-    return 60000 * Math.pow(2, retryNumber);
-  },
-  retryCondition: (error): boolean => {
-    logger.error(error);
-    return true;
-  },
-});
 
 const queueQuestion: Tweet[] = [];
 const queueSummary: any[] = [];
@@ -41,7 +28,7 @@ async function recentSearch(username: string) {
     max_results: 100,
   };
 
-  const response = await axios.get(recentSearchURL, {
+  const response = await axiosClient().get(recentSearchURL, {
     params: parameters,
     headers: {
       Authorization: `Bearer ${token}`,
