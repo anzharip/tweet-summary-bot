@@ -9,11 +9,9 @@ import { WordFrequency } from "./interfaces/word-frequency.interface";
 import { sentiment } from "./utility/gcp/sentiment";
 import { translate } from "./utility/gcp/translate";
 import { logger } from "./utility/logger";
+import { regexTwitterHandle, regexURL } from "./utility/regex";
 
 dotenv.config();
-
-const regexTwitterHandle = /(\s+|^)@\S+/g;
-const regexURL = /(?:https?|ftp):\/\/[\S\n]+/g;
 
 axiosRetry(axios, {
   retries: Infinity,
