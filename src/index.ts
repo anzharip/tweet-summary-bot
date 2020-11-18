@@ -1,17 +1,18 @@
 import axios from "axios";
 import axiosRetry from "axios-retry";
-import * as dotenv from "dotenv";
+// Make sure dotenv import is as high as possible to make sure the the env
+// variables is loaded properly before any other imports that depends on it
+// (ref: https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import)
+import "dotenv/config";
 import sw from "stopword";
 import TextCleaner from "text-cleaner";
-import Twitter from "twitter-lite";
 import { Tweet } from "./interfaces/twitter/tweet.interface";
 import { WordFrequency } from "./interfaces/word-frequency.interface";
 import { sentiment } from "./utility/gcp/sentiment";
 import { translate } from "./utility/gcp/translate";
 import { logger } from "./utility/logger";
 import { regexTwitterHandle, regexURL } from "./utility/regex";
-
-dotenv.config();
+import { twitterClient } from "./utility/twitter-client";
 
 axiosRetry(axios, {
   retries: Infinity,
@@ -24,15 +25,6 @@ axiosRetry(axios, {
     return true;
   },
 });
-
-const twitterLiteConfig = {
-  subdomain: "api", // "api" is the default (change for other subdomains)
-  version: "1.1", // version "1.1" is the default (change for other subdomains)
-  consumer_key: process.env.TWITTER_API_KEY || "", // from Twitter.
-  consumer_secret: process.env.TWITTER_API_SECRET_KEY || "", // from Twitter.
-  access_token_key: process.env.TWITTER_ACCESS_TOKEN_KEY || "", // from your User (oauth_token)
-  access_token_secret: process.env.TWITTER_ACCESS_TOKEN_SECRET_KEY || "", // from your User (oauth_token_secret)
-};
 
 const queueQuestion: Tweet[] = [];
 const queueSummary: any[] = [];
@@ -143,7 +135,7 @@ async function isTweetLooping(tweet: Tweet) {
 }
 
 async function retrieveQuestion() {
-  const client = new Twitter(twitterLiteConfig);
+  const client = twitterClient();
 
   const parameters = {
     track: process.env.TWITTER_ACCOUNT_TO_LISTEN || "",
@@ -181,7 +173,7 @@ async function generateSummary(question: any) {
 }
 
 async function sendAnswer(summary: any) {
-  const client = new Twitter(twitterLiteConfig);
+  const client = twitterClient();
   const status = summary.wordFrequency
     .splice(0, 5)
     .map((element: any) => element[0])
