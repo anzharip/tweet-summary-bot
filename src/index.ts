@@ -4,18 +4,15 @@
 import "dotenv/config";
 import sw from "stopword";
 import TextCleaner from "text-cleaner";
-import { Tweet } from "./interfaces/twitter/tweet.interface";
+import { retrieveQuestion } from "./incoming";
 import { WordFrequency } from "./interfaces/word-frequency.interface";
 import { axiosClient } from "./utility/axios-retry-configuration";
 import { sentiment } from "./utility/gcp/sentiment";
 import { translate } from "./utility/gcp/translate";
 import { logger } from "./utility/logger";
+import { queueQuestion, queueSummary } from "./utility/queue";
 import { regexTwitterHandle, regexURL } from "./utility/regex";
 import { twitterClient } from "./utility/twitter-client";
-
-const queueQuestion: Tweet[] = [];
-const queueSummary: any[] = [];
-const queueReport: any[] = [];
 
 const token = process.env.TWITTER_BEARER_TOKEN || "";
 const recentSearchURL = "https://api.twitter.com/2/tweets/search/recent";
@@ -111,34 +108,6 @@ async function analyseSentiment(text: string) {
   // Detects the sentiment of the text
   const [result] = await sentiment.analyzeSentiment({ document: document });
   return result;
-}
-
-async function isTweetLooping(tweet: Tweet) {
-  // check if in reply to of the incoming tweets is replying to the bot or not
-  return tweet.in_reply_to_screen_name ===
-    (process.env.TWITTER_ACCOUNT_TO_LISTEN as string).replace("@", "")
-    ? true
-    : false;
-}
-
-async function retrieveQuestion() {
-  const client = twitterClient();
-
-  const parameters = {
-    track: process.env.TWITTER_ACCOUNT_TO_LISTEN || "",
-  };
-
-  client
-    .stream("statuses/filter", parameters)
-    .on("start", () => logger.info("Streaming start"))
-    .on("data", async (data: Tweet) => {
-      if ((await isTweetLooping(data)) === false) {
-        queueQuestion.push(data);
-      }
-    })
-    .on("ping", () => logger.info("Keepalive received"))
-    .on("error", (error) => logger.error(error))
-    .on("end", () => logger.info("Streaming end"));
 }
 
 async function generateSummary(question: any) {
