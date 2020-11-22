@@ -36,7 +36,7 @@ export async function recentSearch(
 
 export async function generateWordFrequency(
   words: string[]
-): Promise<[string, number][] | void> {
+): Promise<[string, number][]> {
   if (words.length === 0) {
     throw new Error("The received words length is zero. ");
   }
@@ -91,7 +91,7 @@ export async function generateWordsArray(tweets: {
 export async function generateSummary(
   question: Tweet
 ): Promise<{
-  wordFrequency: void | [string, number][];
+  wordFrequency: [string, number][];
   replyToStatusId: string;
   sentiment: google.cloud.language.v1.IAnalyzeSentimentResponse;
 } | void> {
