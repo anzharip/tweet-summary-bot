@@ -1,6 +1,6 @@
-import { google } from "@google-cloud/language/build/protos/protos";
 import sw from "stopword";
 import TextCleaner from "text-cleaner";
+import { Summary } from "../../interfaces/summary.interface";
 import { Tweet } from "../../interfaces/twitter/tweet.interface";
 import { WordFrequency } from "../../interfaces/word-frequency.interface";
 import { axiosClient } from "../axios-retry-configuration";
@@ -90,11 +90,7 @@ export async function generateWordsArray(tweets: {
 
 export async function generateSummary(
   question: Tweet
-): Promise<{
-  wordFrequency: [string, number][];
-  replyToStatusId: string;
-  sentiment: google.cloud.language.v1.IAnalyzeSentimentResponse;
-} | void> {
+): Promise<Summary | void> {
   try {
     const recentTweets = await recentSearch(question.in_reply_to_user_id_str);
     const wordsArray = await generateWordsArray(recentTweets);

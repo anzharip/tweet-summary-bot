@@ -1,12 +1,8 @@
-import { google } from "@google-cloud/language/build/protos/protos";
+import { Summary } from "./interfaces/summary.interface";
 import { logger } from "./utility/logger";
 import { twitterClient } from "./utility/twitter/twitter-client";
 
-export async function sendAnswer(summary: {
-  wordFrequency: [string, number][];
-  replyToStatusId: string;
-  sentiment: google.cloud.language.v1.IAnalyzeSentimentResponse;
-}): Promise<void> {
+export async function sendAnswer(summary: Summary): Promise<void> {
   const client = twitterClient();
   const status = summary.wordFrequency
     .splice(0, 5)
