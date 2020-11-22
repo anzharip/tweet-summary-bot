@@ -1,5 +1,6 @@
 import sw from "stopword";
 import TextCleaner from "text-cleaner";
+import { Tweet } from "../../interfaces/twitter/tweet.interface";
 import { WordFrequency } from "../../interfaces/word-frequency.interface";
 import { axiosClient } from "../axios-retry-configuration";
 import { analyseSentiment } from "../gcp/sentiment";
@@ -10,7 +11,9 @@ import { regexTwitterHandle, regexURL } from "../regex";
 const token = process.env.TWITTER_BEARER_TOKEN || "";
 const recentSearchURL = "https://api.twitter.com/2/tweets/search/recent";
 
-export async function recentSearch(username: string) {
+export async function recentSearch(
+  username: string
+): Promise<{ length: number; data: [] }> {
   // Edit query parameters below
   const parameters = {
     query: `from:${username} -is:retweet`,
@@ -30,17 +33,19 @@ export async function recentSearch(username: string) {
   return response.data;
 }
 
-export async function generateWordFrequency(words: string[]) {
+export async function generateWordFrequency(
+  words: string[]
+): Promise<[string, number][] | void> {
   if (words.length === 0) {
-    return;
+    throw new Error("The received words length is zero. ");
   }
   const wordFrequency: WordFrequency = {};
   words.forEach((element: string) => {
     // Keep track of occurences
     if (Object.prototype.hasOwnProperty.call(wordFrequency, element)) {
-      wordFrequency[element] += 1;
+      wordFrequency[String(element)] += 1;
     } else {
-      wordFrequency[element] = 1;
+      wordFrequency[String(element)] = 1;
     }
   });
 
@@ -53,13 +58,13 @@ export async function generateWordFrequency(words: string[]) {
   });
 }
 
-export async function generateWordsArray(tweets: any) {
-  if (tweets.length === 0) {
-    return;
-  }
+export async function generateWordsArray(tweets: {
+  length: number;
+  data: [];
+}): Promise<string[]> {
   let recentTweetsConcat = "";
   if (tweets["data"]) {
-    tweets["data"].forEach((element: any) => {
+    tweets["data"].forEach((element: { text: string }) => {
       if (element.text)
         recentTweetsConcat = recentTweetsConcat + " " + element.text;
     });
@@ -82,7 +87,7 @@ export async function generateWordsArray(tweets: any) {
   ]);
 }
 
-export async function generateSummary(question: any) {
+export async function generateSummary(question: Tweet): Promise<unknown> {
   try {
     const recentTweets = await recentSearch(question.in_reply_to_user_id_str);
     const wordsArray = await generateWordsArray(recentTweets);
@@ -96,6 +101,5 @@ export async function generateSummary(question: any) {
     };
   } catch (error) {
     logger.error(error);
-    return;
   }
 }
