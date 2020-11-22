@@ -1,16 +1,27 @@
+import { Summary } from "./interfaces/summary.interface";
 import { logger } from "./utility/logger";
 import { twitterClient } from "./utility/twitter/twitter-client";
 
-export async function sendAnswer(summary: any): Promise<void> {
+export async function sendAnswer(summary: Summary): Promise<void> {
   const client = twitterClient();
   const status = summary.wordFrequency
     .splice(0, 5)
-    .map((element: any) => element[0])
+    .map((element: [string, number]) => element[0])
     .join(", ");
+  if (summary.sentiment.documentSentiment === null) {
+    throw new Error("documentSentiment is null. ");
+  }
+  if (summary.sentiment.documentSentiment === undefined) {
+    throw new Error("documentSentiment is undefined. ");
+  }
   const sentimentScore = summary.sentiment.documentSentiment.score || 0;
-  const sentimentScoreRounded = Number.parseFloat(sentimentScore).toFixed(2);
+  const sentimentScoreRounded = Number.parseFloat(
+    String(sentimentScore)
+  ).toFixed(2);
   const magnitudeScore = summary.sentiment.documentSentiment.magnitude || 0;
-  const magnitudeScoreRounded = Number.parseFloat(magnitudeScore).toFixed(2);
+  const magnitudeScoreRounded = Number.parseFloat(
+    String(magnitudeScore)
+  ).toFixed(2);
   let sentimentScoreString = "Neutral";
   if (sentimentScore <= -0.25 && sentimentScore >= -1) {
     sentimentScoreString = "Negative";
