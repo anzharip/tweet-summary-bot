@@ -4,6 +4,7 @@
 import "dotenv/config";
 import { retrieveQuestion } from "./incoming";
 import { sendAnswer } from "./outgoing";
+import { server } from "./utility/healthcheck";
 import { logger } from "./utility/logger";
 import { queueQuestion, queueSummary } from "./utility/queue";
 import { generateSummary } from "./utility/twitter/tweet-utilities";
@@ -29,6 +30,11 @@ async function app() {
       }
     }
   }, 1000);
+
+  server.listen(Number(process.env.HEALTHCHECK_PORT) || 3000);
+  server.on("listening", () => {
+    logger.info("Healthcheck is up");
+  });
 
   logger.info("Service has been started!");
 }
