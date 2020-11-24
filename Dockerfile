@@ -28,4 +28,4 @@ COPY . .
 
 COPY --from=development /usr/src/app/dist ./dist
 
-CMD ["node", "dist/index"]
+CMD ["node", "--unhandled-rejections=strict", "dist/index"]

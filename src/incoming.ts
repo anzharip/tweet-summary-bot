@@ -4,7 +4,7 @@ import { queueQuestion } from "./utility/queue";
 import { isTweetLooping } from "./utility/twitter/tweet-checks";
 import { twitterClient } from "./utility/twitter/twitter-client";
 
-export function retrieveQuestion(): void {
+export function retrieveQuestion(endRetries = 0): void {
   const client = twitterClient();
 
   const parameters = {
@@ -20,6 +20,20 @@ export function retrieveQuestion(): void {
       }
     })
     .on("ping", () => logger.info("Keepalive received"))
-    .on("error", (error) => logger.error(error))
-    .on("end", () => logger.info("Streaming end"));
+    .on("error", (error) => {
+      logger.error(error);
+      throw new Error(`Stream error: ${JSON.stringify(error)}`);
+    })
+    .on("end", (error) => {
+      logger.error(`Stream error: ${JSON.stringify(error)}`);
+      if (endRetries < 11) {
+        endRetries += 1;
+        setInterval(
+          () => retrieveQuestion(endRetries),
+          Math.pow(2, endRetries) * 1000
+        );
+      } else {
+        retrieveQuestion(0);
+      }
+    });
 }
