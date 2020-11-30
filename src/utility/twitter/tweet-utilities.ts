@@ -8,6 +8,7 @@ import { analyseSentiment } from "../gcp/sentiment";
 import { translateText } from "../gcp/translate";
 import { logger } from "../logger";
 import { regexTwitterHandle, regexURL } from "../regex";
+import { customStopwords } from "./custom-stopwords";
 
 const token = process.env.TWITTER_BEARER_TOKEN || "";
 const recentSearchURL = "https://api.twitter.com/2/tweets/search/recent";
@@ -85,6 +86,7 @@ export async function generateWordsArray(tweets: {
   return sw.removeStopwords(recentTweetsConcatClean.split(" "), [
     ...sw.en,
     ...sw.id,
+    ...customStopwords,
   ]);
 }
 

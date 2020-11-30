@@ -1,0 +1,15 @@
+export const customStopwords = [
+  "ga",
+  "gw",
+  "lu",
+  "yg",
+  "bgt",
+  "ya",
+  "tp",
+  "engga",
+  "gak",
+  "yah",
+  "tau",
+  "pas",
+  "udh",
+];
