@@ -17,7 +17,7 @@
   "dependencies": {
     "@google-cloud/language": "^4.2.1",
     "@google-cloud/translate": "^6.0.5",
-    "axios": "^0.21.0",
+    "axios": "^0.21.1",
     "axios-oauth-client": "^1.4.0",
     "axios-retry": "^3.1.9",
     "axios-token-interceptor": "^0.2.0",
