@@ -27,7 +27,7 @@
     "rimraf": "^3.0.2",
     "stopword": "^1.0.6",
     "text-cleaner": "^1.2.1",
-    "twitter-lite": "^0.14.0"
+    "twitter-lite": "^1.1.0"
   },
   "devDependencies": {
     "@types/node": "^14.14.22",
