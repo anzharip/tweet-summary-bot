@@ -23,7 +23,7 @@
     "axios-token-interceptor": "^0.2.0",
     "dotenv": "^8.2.0",
     "pino": "^6.11.1",
-    "pino-pretty": "^4.5.0",
+    "pino-pretty": "^4.6.0",
     "rimraf": "^3.0.2",
     "stopword": "^1.0.6",
     "text-cleaner": "^1.2.1",
