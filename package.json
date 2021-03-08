@@ -25,7 +25,7 @@
     "pino": "^6.11.1",
     "pino-pretty": "^4.5.0",
     "rimraf": "^3.0.2",
-    "stopword": "^1.0.6",
+    "stopword": "^1.0.7",
     "text-cleaner": "^1.2.1",
     "twitter-lite": "^1.1.0"
   },
