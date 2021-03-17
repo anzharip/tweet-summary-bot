@@ -15,7 +15,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@google-cloud/language": "^4.2.1",
+    "@google-cloud/language": "^4.2.2",
     "@google-cloud/translate": "^6.1.0",
     "axios": "^0.21.1",
     "axios-oauth-client": "^1.4.0",
