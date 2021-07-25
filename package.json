@@ -31,7 +31,7 @@
   },
   "devDependencies": {
     "@types/node": "^15.12.4",
-    "@types/pino": "^6.3.8",
+    "@types/pino": "^6.3.9",
     "@typescript-eslint/eslint-plugin": "^4.22.1",
     "@typescript-eslint/parser": "^4.22.1",
     "eslint": "^7.29.0",
@@ -41,7 +41,7 @@
     "eslint-plugin-security": "^1.4.0",
     "eslint-plugin-sonarjs": "^0.7.0",
     "eslint-plugin-unicorn": "^34.0.1",
-    "husky": "^6.0.0",
+    "husky": "^7.0.1",
     "lint-staged": "^11.0.0",
     "nodemon": "^2.0.7",
     "prettier": "2.3.2",
