@@ -30,7 +30,7 @@
     "twitter-lite": "^1.1.0"
   },
   "devDependencies": {
-    "@types/node": "^15.12.4",
+    "@types/node": "^16.7.9",
     "@types/pino": "^6.3.11",
     "@typescript-eslint/eslint-plugin": "^4.22.1",
     "@typescript-eslint/parser": "^4.22.1",
