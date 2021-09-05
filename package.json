@@ -17,7 +17,7 @@
   "dependencies": {
     "@google-cloud/language": "^4.2.8",
     "@google-cloud/translate": "^6.2.6",
-    "axios": "^0.21.1",
+    "axios": "^0.21.3",
     "axios-oauth-client": "^1.4.3",
     "axios-retry": "^3.1.9",
     "axios-token-interceptor": "^0.2.0",
@@ -34,7 +34,7 @@
     "@types/pino": "^6.3.11",
     "@typescript-eslint/eslint-plugin": "^4.22.1",
     "@typescript-eslint/parser": "^4.22.1",
-    "eslint": "^7.31.0",
+    "eslint": "^7.32.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-no-secrets": "^0.8.9",
     "eslint-plugin-promise": "^5.1.0",
