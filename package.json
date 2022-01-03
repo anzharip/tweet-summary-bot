@@ -15,7 +15,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@google-cloud/language": "^4.3.1",
+    "@google-cloud/language": "^4.3.2",
     "@google-cloud/translate": "^6.3.1",
     "axios": "^0.21.2",
     "axios-oauth-client": "^1.4.4",
@@ -30,7 +30,7 @@
     "twitter-lite": "^1.1.0"
   },
   "devDependencies": {
-    "@types/node": "^16.11.6",
+    "@types/node": "^17.0.6",
     "@types/pino": "^7.0.5",
     "@typescript-eslint/eslint-plugin": "^4.33.0",
     "@typescript-eslint/parser": "^4.33.0",
