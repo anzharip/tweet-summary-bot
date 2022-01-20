@@ -22,7 +22,7 @@
     "axios-retry": "^3.2.4",
     "axios-token-interceptor": "^0.2.0",
     "dotenv": "^10.0.0",
-    "pino": "^6.13.3",
+    "pino": "^7.6.4",
     "pino-pretty": "^7.3.0",
     "rimraf": "^3.0.2",
     "stopword": "^1.0.11",
